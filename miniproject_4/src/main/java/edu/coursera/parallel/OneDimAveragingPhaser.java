@@ -106,51 +106,55 @@ public final class OneDimAveragingPhaser {
      * @param tasks The number of threads/tasks to use to compute the solution
      */
     public static void runParallelFuzzyBarrier(final int iterations,
-            final double[] myNew, final double[] myVal, final int n,
-            final int tasks) {
-        Phaser ph = new Phaser(0);
-        ph.bulkRegister(tasks);
+                                               final double[] myNew, final double[] myVal, final int n,
+                                               final int tasks) {
+        Phaser phaser = new Phaser(0);
+        phaser.bulkRegister(tasks);
 
-        Thread[] threads = new Thread[tasks];
+        Thread threads[]= new Thread[tasks];
 
-        for (int ii = 0; ii < tasks; ii++) {
-            final int i = ii;
+        for(int ii=0;ii<tasks;++ii) {
+            int i=ii;
 
-            threads[ii] = new Thread(() -> {
-                double[] threadPrivateMyVal = myVal;
-                double[] threadPrivateMyNew = myNew;
+            threads[ii]=new Thread(()->{
 
-                final int chunkSize = (n + tasks - 1) / tasks;
-                final int left = (i * chunkSize) + 1;
-                int right = (left + chunkSize) - 1;
-                if (right > n) right = n;
+                double myValue[]=myVal;
+                double myNewValue[]=myNew;
 
-                for (int iter = 0; iter < iterations; iter++) {
-                    threadPrivateMyNew[left] = (threadPrivateMyVal[left - 1] + threadPrivateMyVal[left + 1]) / 2.0;
-                    threadPrivateMyNew[right] = (threadPrivateMyVal[right - 1] + threadPrivateMyVal[right + 1]) / 2.0;
+                for(int iter = 0;iter<iterations;++iter) {
 
-                    int currentPhase = ph.arrive();
-                    for (int j = left + 1; j <= right - 1; j++) {
-                        threadPrivateMyNew[j] = (threadPrivateMyVal[j - 1]
-                                + threadPrivateMyVal[j + 1]) / 2.0;
-                    }
-                    ph.awaitAdvance(currentPhase);
+                    int left = i*(n/tasks)+1;
+                    myNewValue[left]=(myValue[left-1]+myValue[left+1])/2;
 
-                    double[] temp = threadPrivateMyNew;
-                    threadPrivateMyNew = threadPrivateMyVal;
-                    threadPrivateMyVal = temp;
+                    int right = (i+1)*(n/tasks);
+                    myNewValue[right] = (myValue[right-1]+myValue[right+1])/2;
+
+                    int currentPhase = phaser.arrive();
+
+                    for(int j = left+1;j<right;++j)
+                        myNewValue[j] = (myValue[j-1]+myValue[j+1])/2;
+
+                    phaser.awaitAdvance(currentPhase);
+
+                    double temp[]=myNewValue;
+                    myNewValue=myValue;
+                    myValue=temp;
+
+
                 }
 
+
             });
+
             threads[ii].start();
         }
 
-        for (int ii = 0; ii < tasks; ii++) {
+        for(int ii=0;ii<tasks;++ii)
             try {
                 threads[ii].join();
             } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
-        }
     }
 }
