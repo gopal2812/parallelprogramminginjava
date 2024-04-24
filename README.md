@@ -1,4 +1,4 @@
-# parallelprogramminginjava
+# ParallelProgrammingInJava
 parallel programming in java
 
 ## 1 Task Parallelism
